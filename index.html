@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Field Gradients</title>
+<link rel="stylesheet" href="fg-styles.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     AUTH MODAL — Sign In / Sign Up (handled by fg-auth.js)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="fg-modal-overlay" id="authOverlay">
+  <div class="fg-modal" style="width:340px">
+    <h2 id="authModalTitle" style="color:var(--fg-accent,#7ee8a2);font-family:'Playfair Display',serif;font-size:1rem;margin:0">Sign In</h2>
+    <div id="authErr" style="font-size:.62rem;color:#e05555;min-height:1rem"></div>
+    <div id="authNameRow" style="display:none">
+      <input type="text" id="authFirstName" placeholder="First name (optional)" class="fg-modal-input">
+    </div>
+    <input type="email" id="authEmail" placeholder="Email address" class="fg-modal-input" autocomplete="email">
+    <input type="password" id="authPassword" placeholder="Password (min 8 chars)" class="fg-modal-input" autocomplete="current-password">
+    <div style="display:flex;gap:8px">
+      <button class="fg-modal-btn" onclick="closeAuthModal()" style="flex:1">Cancel</button>
+      <button class="fg-modal-btn primary" id="authSubmitBtn" onclick="submitAuth()" style="flex:1">Sign In</button>
+    </div>
+    <div style="text-align:center;font-size:.62rem;color:rgba(255,255,255,0.55)">
+      <span id="authSwitchText">No account?</span>
+      <button onclick="toggleAuthMode()" id="authSwitchBtn" style="background:none;border:none;color:var(--fg-accent,#7ee8a2);font-family:inherit;font-size:.62rem;cursor:pointer;padding:0 4px">Sign Up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     UPGRADE MODAL — Stripe checkout / portal entry
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="upgrade-overlay" id="upgradeOverlay">
+  <div class="upgrade-modal">
+    <h2>Field Gradients Pro</h2>
+    <p>Unlock the full studio: long recordings,<br>high-resolution exports, and DJ sets.</p>
+    <div class="upgrade-features">
+      <div class="upgrade-feature"><span class="upgrade-feature-icon">✦</span>Unlimited recording (Free: 30s)</div>
+      <div class="upgrade-feature"><span class="upgrade-feature-icon">✦</span>High-resolution export &amp; watermark-free</div>
+      <div class="upgrade-feature"><span class="upgrade-feature-icon">✦</span>Studio Mode &amp; Timeline editor</div>
+      <div class="upgrade-feature"><span class="upgrade-feature-icon">✦</span>DJ Sets &amp; programmed live sets</div>
+      <div class="upgrade-feature"><span class="upgrade-feature-icon">✦</span>Unlimited saved fields &amp; cloud sync</div>
+    </div>
+    <div class="upgrade-price">
+      <strong>$5</strong><span>/month</span><br>
+      <span style="font-size:.6rem">Cancel anytime · Billed monthly</span>
+    </div>
+    <div class="upgrade-cta">
+      <div class="upgrade-err" id="upgradeErr"></div>
+      <button class="fg-modal-btn primary" id="upgradeBtn" onclick="startCheckout()">Upgrade to Pro</button>
+      <button class="fg-modal-btn" id="manageBtn" onclick="openPortal()" style="display:none">Manage Subscription</button>
+      <button class="fg-modal-btn" onclick="closeUpgradeModal()">Maybe Later</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     ADMIN PANEL — stats dashboard (admin only)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-header">
+    <h2>Field Gradients — Admin</h2>
+    <button class="admin-close" onclick="closeAdminPanel()">✕ Close</button>
+  </div>
+  <div class="admin-body" id="adminBody">
+    <div class="admin-loading">Loading statistics…</div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- TOPBAR — minimal: logo + actions + LIVE -->
+  <div class="topbar">
+    <!-- Logo -->
+    <div class="logo" id="appLogo">
+      <svg width="22" height="22" viewBox="0 0 16 20" fill="none" style="flex-shrink:0;margin-right:7px;image-rendering:pixelated;image-rendering:crisp-edges">
+        <!-- Headphone arc -->
+        <rect x="3" y="0" width="10" height="1" fill="#7CFF8A"/>
+        <rect x="2" y="1" width="1"  height="3" fill="#7CFF8A"/>
+        <rect x="13" y="1" width="1" height="3" fill="#7CFF8A"/>
+        <!-- Ear cups -->
+        <rect x="1" y="2" width="2" height="4" fill="#fff"/>
+        <rect x="13" y="2" width="2" height="4" fill="#fff"/>
+        <!-- Head -->
+        <rect x="3" y="3"  width="10" height="4" fill="#ddd"/>
+        <!-- Flat eyes -->
+        <rect x="4" y="4"  width="2" height="1" fill="#111"/>
+        <rect x="10" y="4" width="2" height="1" fill="#111"/>
+        <!-- Neck -->
+        <rect x="6" y="7" width="4" height="1" fill="#bbb"/>
+        <!-- Bigger deck — taller, more detail -->
+        <rect x="1" y="8"  width="14" height="11" fill="#1a1a1a"/>
+        <rect x="1" y="8"  width="14" height="1"  fill="#555"/>
+        <!-- Platter (circle-ish) -->
+        <rect x="2"  y="9"  width="6" height="6" fill="#333"/>
+        <rect x="3"  y="9"  width="4" height="6" fill="#2a2a2a"/>
+        <rect x="2"  y="10" width="6" height="4" fill="#2a2a2a"/>
+        <rect x="4"  y="11" width="2" height="2" fill="#444"/>
+        <!-- Platter center dot -->
+        <rect x="4"  y="11" width="2" height="2" fill="#555"/>
+        <rect x="4"  y="12" width="1" height="1" fill="#888"/>
+        <!-- Mixer / buttons right side -->
+        <rect x="9"  y="9"  width="5" height="2" fill="#7CFF8A"/>
+        <rect x="9"  y="12" width="5" height="1" fill="#fff"/>
+        <rect x="9"  y="14" width="2" height="2" fill="#fff"/>
+        <rect x="12" y="14" width="2" height="2" fill="#555"/>
+        <!-- Bottom edge -->
+        <rect x="1" y="18" width="14" height="1" fill="#444"/>
+      </svg>
+      <span style="font-size:10px;letter-spacing:.22em;color:rgba(255,255,255,0.88);font-weight:600">FIELD GRADIENTS</span>
+    </div>
+    <div class="sp"></div>
+    <!-- Hidden inputs kept for JS compatibility — moved to Rhythm tab -->
+    <div id="styleSelectWrap" style="display:none">
+      <select id="styleSelect" onchange="currentStyle=this.value;activeVibeName=null;applyReverbForGenre(currentStyle);resetBassPhrase();pickProgressionForStyle(currentStyle);updateLiveSetLabel();updateAmbientSub();{const s=STYLES[currentStyle];if(s){bpm=pickBpm(s);document.getElementById('bpmVal').textContent=Math.round(bpm);if(beatEnabled){stopBeat();startBeat();}startBpmDrift(bpm,s.bpmRange);}}">
+        <option value="deephouse">Deep House</option><option value="techhouse">Tech House</option><option value="acidhouse">Acid House</option><option value="detroittechno">Detroit Techno</option><option value="minimaltechno">Minimal Techno</option><option value="dubtechno">Dub Techno</option><option value="ukgarage">UK Garage</option><option value="dnb">Drum &amp; Bass</option><option value="ambienttechno">Ambient Techno</option><option value="trance">Trance</option><option value="hardcore">Hardcore</option><option value="hardtechno">Hard Techno</option><option value="downtempo">Downtempo</option><option value="electronica">Electronica</option><option value="italo">Italo Disco</option>
+      </select>
+    </div>
+    <select id="keySelect" style="display:none"><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option></select>
+    <select id="scaleSelect" style="display:none"><option>Major</option><option>Minor</option><option>Dorian</option><option>Phrygian</option><option>Pentatonic</option><option>Lydian</option><option>Chromatic</option></select>
+    <div id="hiddenBpmBox" class="bpm-box" style="display:none"><span>BPM</span><b id="hiddenBpmVal">126</b></div>
+    <!-- Hidden compat buttons -->
+    <button class="tb on" id="btnAudio" style="display:none">Audio</button>
+    <button class="tb" id="btnBeat" style="display:none">Beat</button>
+    <button class="tb on" id="btnMarkers" style="display:none">Labels</button>
+    <!-- Topbar: logo + utility + live only -->
+    <button class="tb" id="btnSave" style="opacity:0.55">Save</button>
+    <button class="tb" id="btnUndo" style="opacity:0.55">↺</button>
+    <button class="tb" id="btnRedo" style="opacity:0.55">↻</button>
+    <button class="tb" id="btnShare" title="Copy link to this field" style="color:rgba(126,232,162,0.9);border-color:rgba(126,232,162,0.25)">⬆ Share</button>
+    <!-- Hidden but kept for JS compat -->
+    <!-- Hidden compat buttons — never visible -->
+    <button id="btnRnd" style="display:none;position:absolute;pointer-events:none" aria-hidden="true">Randomize</button>
+    <button id="btnGenerate" style="display:none;position:absolute;pointer-events:none" aria-hidden="true">Generate</button>
+    <button id="btnSounds" style="display:none;position:absolute;pointer-events:none" aria-hidden="true">Sounds</button>
+    <button id="btnDrift" style="display:none;position:absolute;pointer-events:none" aria-hidden="true">Drift</button>
+    <!-- Keep hidden for JS compat -->
+    <button id="btnLive" style="display:none;position:absolute;pointer-events:none" aria-hidden="true">LIVE</button>
+    <!-- Auth/account chip — rendered by fg-auth.js -->
+    <div class="header-right" id="headerRight" style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0"></div>
+  </div>
+
+  <!-- LIVE MODE OVERLAY — fixed fullscreen, always on top -->
+  <div id="liveOverlay" style="display:none;position:fixed;inset:0;z-index:805;background:transparent;pointer-events:none">
+
+    <!-- GESTURE HINTS — top center of live screen -->
+    <div id="liveGestureHints" class="gesture-hints" style="position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-10px);z-index:820;pointer-events:none">
+      <div class="gh-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/><circle cx="9" cy="9" r="2.5" fill="rgba(255,255,255,0.55)"/><circle cx="9" cy="9" r="6" stroke="rgba(255,255,255,0.18)" stroke-width="4"/></svg>
+        <span class="gh-label">Hold</span>
+        <span class="gh-desc">Solo sound<br>filter sweep</span>
+      </div>
+      <div class="gh-div"></div>
+      <div class="gh-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7" cy="9" r="2.5" fill="rgba(255,255,255,0.55)"/><path d="M10 9 L16 9" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round"/><path d="M14 7 L16 9 L14 11" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="gh-label">Drag</span>
+        <span class="gh-desc">Move &amp; pan<br>X=tone Y=depth</span>
+      </div>
+      <div class="gh-div"></div>
+      <div class="gh-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="4.5" cy="9" r="2" fill="rgba(255,255,255,0.55)"/><circle cx="13.5" cy="9" r="2" fill="rgba(255,255,255,0.55)"/><path d="M7 9 L11 9" stroke="rgba(255,255,255,0.30)" stroke-width="1" stroke-linecap="round" stroke-dasharray="1.5 1.5"/><path d="M6 6.5 L4.5 9 L6 11.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 6.5 L13.5 9 L12 11.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="gh-label">Pinch</span>
+        <span class="gh-desc">Size &amp; volume<br>room space</span>
+      </div>
+      <div class="gh-div"></div>
+      <div class="gh-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="13" r="2.2" fill="rgba(255,255,255,0.55)"/><path d="M9 10.5 L9 4" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round"/><path d="M6.5 6.5 L9 4 L11.5 6.5" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="gh-label">Flick</span>
+        <span class="gh-desc">Reverb throw<br>dub echo</span>
+      </div>
+    </div>
+
+    <!-- Logo in live mode — top left -->
+    <div style="position:absolute;top:10px;left:12px;display:flex;align-items:center;gap:6px;pointer-events:none">
+      <svg width="24" height="24" viewBox="0 0 20 22" fill="none" style="image-rendering:pixelated;image-rendering:crisp-edges;opacity:0.8">
+        <rect x="4" y="0" width="12" height="1" fill="#7CFF8A"/>
+        <rect x="3" y="1" width="1" height="3" fill="#7CFF8A"/>
+        <rect x="16" y="1" width="1" height="3" fill="#7CFF8A"/>
+        <rect x="1" y="2" width="3" height="5" fill="#eee"/>
+        <rect x="16" y="2" width="3" height="5" fill="#eee"/>
+        <rect x="4" y="2" width="12" height="6" fill="#ddd"/>
+        <rect x="6"  y="4" width="3" height="2" fill="#111"/>
+        <rect x="11" y="4" width="3" height="2" fill="#111"/>
+        <rect x="8"  y="4" width="1" height="1" fill="#fff"/>
+        <rect x="13" y="4" width="1" height="1" fill="#fff"/>
+        <rect x="8" y="8" width="4" height="2" fill="#bbb"/>
+        <rect x="1" y="10" width="18" height="11" fill="#151515"/>
+        <rect x="1" y="10" width="18" height="1"  fill="#444"/>
+        <rect x="2"  y="11" width="7" height="1" fill="#2e2e2e"/>
+        <rect x="2"  y="19" width="7" height="1" fill="#2e2e2e"/>
+        <rect x="2"  y="11" width="1" height="9" fill="#2e2e2e"/>
+        <rect x="8"  y="11" width="1" height="9" fill="#2e2e2e"/>
+        <rect x="3"  y="12" width="5" height="1" fill="#3a3a3a"/>
+        <rect x="3"  y="18" width="5" height="1" fill="#3a3a3a"/>
+        <rect x="3"  y="13" width="1" height="5" fill="#3a3a3a"/>
+        <rect x="7"  y="13" width="1" height="5" fill="#3a3a3a"/>
+        <rect x="4"  y="13" width="3" height="5" fill="#252525"/>
+        <rect x="5"  y="15" width="1" height="1" fill="#7CFF8A"/>
+        <rect x="11" y="11" width="7" height="1" fill="#2e2e2e"/>
+        <rect x="11" y="19" width="7" height="1" fill="#2e2e2e"/>
+        <rect x="11" y="11" width="1" height="9" fill="#2e2e2e"/>
+        <rect x="17" y="11" width="1" height="9" fill="#2e2e2e"/>
+        <rect x="12" y="12" width="5" height="1" fill="#3a3a3a"/>
+        <rect x="12" y="18" width="5" height="1" fill="#3a3a3a"/>
+        <rect x="12" y="13" width="1" height="5" fill="#3a3a3a"/>
+        <rect x="16" y="13" width="1" height="5" fill="#3a3a3a"/>
+        <rect x="13" y="13" width="3" height="5" fill="#252525"/>
+        <rect x="14" y="15" width="1" height="1" fill="#fff"/>
+        <rect x="9"  y="13" width="2" height="1" fill="#7CFF8A"/>
+        <rect x="9"  y="15" width="2" height="1" fill="#555"/>
+        <rect x="9"  y="17" width="2" height="1" fill="#fff"/>
+        <rect x="1" y="20" width="18" height="1" fill="#333"/>
+      </svg>
+    </div>
+
+    <!-- Live indicator — set name + BPM, below logo -->
+    <div id="liveIndicator" style="position:absolute;top:40px;left:12px;display:flex;align-items:center;gap:7px;pointer-events:auto;cursor:pointer;z-index:802" title="Long-press to save field">
+      <div id="liveDot" style="width:7px;height:7px;border-radius:50%;background:#ff4040;box-shadow:0 0 8px rgba(255,64,64,0.8)"></div>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span id="liveSetNameDisplay" style="font-size:11px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,0.85)">LIVE</span>
+        <span id="liveBpmDisplay" style="font-size:7px;letter-spacing:.14em;color:rgba(255,255,255,0.35)">— BPM</span>
+      </div>
+    </div>
+
+    <!-- Genre/cue display — centre -->
+    <div id="liveGenreDisplay" style="position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;opacity:0;transition:opacity .8s">
+      <div id="liveGenreArrow" style="font-size:8px;color:rgba(255,255,255,0.28);letter-spacing:.2em;margin-bottom:6px"></div>
+      <div id="liveGenreName" style="font-size:13px;font-weight:600;letter-spacing:.2em;color:rgba(255,255,255,0.65);text-transform:uppercase"></div>
+    </div>
+
+    <!-- Control bar -->
+    <div id="liveControls" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:rgba(8,8,14,0.82);border:1px solid rgba(255,255,255,0.10);border-radius:50px;padding:10px 18px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:opacity .4s,transform .4s;pointer-events:auto;z-index:820;display:none">
+      <button id="liveBtnPause" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.85);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">⏸</button>
+      <button id="liveBtnRecord" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,80,80,0.3);background:rgba(255,80,80,0.08);color:rgba(255,100,100,0.85);font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">⏺</button>
+      <button id="liveBtnShare" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.75);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">↑</button>
+      <!-- Schedule button -->
+      <button id="liveBtnSchedule" title="Today's sets" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.65);font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">☰</button>
+      <div style="width:1px;height:22px;background:rgba(255,255,255,0.1);flex-shrink:0"></div>
+      <button id="liveBtnExit" style="width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+
+    <!-- SCHEDULE PANEL — slides up from bottom -->
+    <div id="liveSchedulePanel" style="
+      position:absolute;left:0;right:0;bottom:0;
+      height:75dvh;
+      background:rgba(6,6,10,0.97);
+      border-top:1px solid rgba(255,255,255,0.08);
+      border-radius:16px 16px 0 0;
+      transform:translateY(100%);
+      transition:transform .38s cubic-bezier(.32,.72,0,1);
+      pointer-events:auto;
+      display:flex;flex-direction:column;
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    ">
+      <!-- Panel handle + header -->
+      <div style="padding:12px 20px 0;flex-shrink:0">
+        <div style="width:32px;height:3px;border-radius:2px;background:rgba(255,255,255,0.15);margin:0 auto 16px"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.07)">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);letter-spacing:-.01em">Today's Sets</div>
+            <div id="schedulePanelDate" style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:.08em;margin-top:2px"></div>
+          </div>
+          <button id="liveBtnCloseSchedule" style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>
+        </div>
+      </div>
+      <!-- Scrollable list -->
+      <div id="scheduleList" style="flex:1;overflow-y:auto;padding:0 20px 20px;-webkit-overflow-scrolling:touch"></div>
+    </div>
+  </div><!-- /#liveOverlay -->
+
+  <!-- SOUND LIBRARY — full screen overlay like live mode -->
+  <!-- LiveTapZone: fixed body-level so iOS touch events aren't blocked by pointer-events:none parent -->
+  <div id="liveTapZone" style="display:none;position:fixed;inset:0;z-index:801;pointer-events:auto;touch-action:none"></div>
+  <!-- STUDIO GESTURE HINTS — fixed top-center, visible in studio mode only -->
+  <div id="studioGestureHints" class="gesture-hints" style="position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-10px);z-index:200;">
+    <div class="gh-item">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M6 2 L6 11 L8.5 9 L10 12.5 L11.5 12 L10 8.5 L13 8.5 Z" fill="rgba(255,255,255,0.55)"/></svg>
+      <span class="gh-label">Click</span>
+      <span class="gh-desc">Select<br>open settings</span>
+    </div>
+    <div class="gh-div"></div>
+    <div class="gh-item">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7" cy="9" r="2.5" fill="rgba(255,255,255,0.55)"/><path d="M10 9 L16 9" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round"/><path d="M14 7 L16 9 L14 11" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="gh-label">Drag</span>
+      <span class="gh-desc">Move<br>pan &amp; depth</span>
+    </div>
+    <div class="gh-div"></div>
+    <div class="gh-item">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="6" y="2" width="6" height="10" rx="3" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/><path d="M9 5 L9 9" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round"/><path d="M7 13.5 L9 16 L11 13.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 4.5 L9 2 L11 4.5" stroke="rgba(255,255,255,0.45)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="gh-label">Scroll</span>
+      <span class="gh-desc">Size &amp; volume<br>scroll up=reverb</span>
+    </div>
+    <div class="gh-div"></div>
+    <div class="gh-item">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 15 Q9 2 15 9" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round" fill="none"/><circle cx="3" cy="15" r="2" fill="rgba(255,255,255,0.55)"/><path d="M12.5 6.5 L15 9 L12 10" stroke="rgba(255,255,255,0.55)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="gh-label">Rotate</span>
+      <span class="gh-desc">Drag endpoint<br>fold &amp; spot</span>
+    </div>
+  </div>
+
+  <div id="soundLibOverlay" style="
+    display:none;position:fixed;inset:0;z-index:900;
+    background:#07070b;
+    flex-direction:column;
+    overflow:hidden;
+  ">
+    <!-- Header -->
+    <div style="
+      padding:14px 20px 12px;
+      border-bottom:1px solid rgba(255,255,255,0.07);
+      display:flex;align-items:center;gap:12px;
+      flex-shrink:0;
+      background:#07070b;
+    ">
+      <button id="btnSoundsBack" style="
+        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
+        color:rgba(255,255,255,0.7);font-family:inherit;font-size:11px;
+        letter-spacing:.08em;padding:8px 16px;border-radius:5px;cursor:pointer;
+      ">← Back</button>
+      <div style="flex:1;padding-left:12px">
+        <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.90);letter-spacing:-.01em">Sound Library</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:.08em;margin-top:2px">tap to preview · live synthesis</div>
+      </div>
+      <div id="soundLibActiveLabel" style="font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:.05em;min-width:100px;text-align:right;padding-right:4px"></div>
+    </div>
+    <!-- Scrollable body -->
+    <div id="soundLibBody" style="flex:1;overflow-y:auto;padding:20px 20px 80px;-webkit-overflow-scrolling:touch"></div>
+  </div>
+
+  <!-- TOOLS BAR -->
+
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- LEFT FIELDS -->
+    <div class="vibes-left">
+      <div class="vibes-left-head">
+        <div class="vibes-left-title">Fields</div>
+      </div>
+      <div class="vibes-body">
+        <div class="vl-section">Built-in Fields</div>
+        <div id="vibesBuiltIn"></div>
+        <div class="vibes-divider"></div>
+        <div class="vl-section">Saved Fields</div>
+        <div class="vibes-save-btn" id="vibesSaveBtn"><span>+ Save Current Field</span></div>
+        <div id="vibesSaved"></div>
+      </div>
+    </div>
+
+    <!-- MODE TOGGLE — fixed position, always on top -->
+    <div class="mode-toggle" id="modeToggle">
+      <button class="mode-toggle-btn active-studio" id="btnModeStudio">Studio</button>
+      <button class="mode-toggle-btn" id="btnModeLive">◉ Live</button>
+    </div>
+
+    <!-- CANVAS -->
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="canvas"></canvas>
+      <div class="canvas-info" id="vibeLabel" style="display:none"><span></span></div>
+      <!-- Onboarding hint — shows on first visit, auto-hides after 6s -->
+      <div id="onboardHint" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:10">
+        <div style="background:rgba(6,6,14,0.88);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:22px 28px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)">
+          <div style="font-size:22px;margin-bottom:10px">◎</div>
+          <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:6px;letter-spacing:-.01em">Tap to place a sound</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.38);line-height:1.6">Each shape plays music instantly<br>Drag to move · Tap to select<br>Press <b style="color:rgba(255,255,255,0.55)">Generate</b> to create a full field</div>
+        </div>
+        <div style="margin-top:10px;font-size:8px;color:rgba(255,255,255,0.22);letter-spacing:.12em">TAP ANYWHERE TO DISMISS</div>
+      </div>
+      <!-- FLOATING COMMAND CAPSULE -->
+      <div class="cmd-capsule" id="cmdCapsule">
+        <button class="cmd-btn generate" id="cmdGenerate">⊕ Generate</button>
+        <div class="cmd-divider"></div>
+        <button class="cmd-btn" id="cmdRandomize">⚄ Randomize</button>
+      </div>
+
+      <!-- ARC BUTTONS -->
+      <div class="arc-bar" id="arcBarEl">
+        <div class="arc-progress" id="arcProgress" style="display:none">
+          <div class="arc-progress-fill" id="arcProgressFill"></div>
+        </div>
+        <div class="arc-progress-label" id="arcProgressLabel"></div>
+        <div class="arc-hint" id="arcHint">shape the energy of the mix</div>
+        <div class="arc-btns">
+          <button class="arc-btn build" id="btnBuild" data-hint="strip back + raise tension over 16 bars → auto-drops">Build</button>
+          <button class="arc-btn drop"  id="btnDrop"  data-hint="everything hits at once — full energy release">Drop</button>
+          <button class="arc-btn brk"   id="btnBreak" data-hint="kick drops out, space opens up, then returns">Break</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR — two-state: Field Settings / Sound Settings -->
+    <div class="sidebar" id="sidebar">
+
+      <!-- ══ FIELD SETTINGS PANEL (default — no element selected) ══ -->
+      <div class="sb-panel active" id="panelField">
+        <div class="sb-header">
+          <div class="sb-header-title">Field Settings</div>
+        </div>
+        <div class="sb-scroll">
+
+          <!-- SOUND WORLD — compact status row -->
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <div style="flex:1;min-width:0">
+              <div id="swStatusLabel" style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Deep House · 126 BPM · A Minor</div>
+            </div>
+            <button id="swEditBtn" style="flex-shrink:0;padding:4px 9px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-size:7.5px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:inherit;transition:all .12s" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">Edit</button>
+          </div>
+
+          <!-- SOUND WORLD EXPANDED — hidden by default -->
+          <div id="swExpanded" style="display:none;border-bottom:1px solid rgba(255,255,255,0.06);padding:4px 0 6px;background:rgba(255,255,255,0.02)">
+            <div class="sb-row">
+              <div class="sb-label">Genre</div>
+              <select class="sb-select" id="sbStyleSelect" onchange="const v=this.value;document.getElementById('styleSelect').value=v;document.getElementById('styleSelect').dispatchEvent(new Event('change'));setTimeout(updateSwStatus,120);">
+                <option value="deephouse">Deep House</option>
+                <option value="techhouse">Tech House</option>
+                <option value="acidhouse">Acid House</option>
+                <option value="detroittechno">Detroit Techno</option>
+                <option value="minimaltechno">Minimal Techno</option>
+                <option value="dubtechno">Dub Techno</option>
+                <option value="ukgarage">UK Garage</option>
+                <option value="dnb">Drum &amp; Bass</option>
+                <option value="ambienttechno">Ambient Techno</option>
+                <option value="trance">Trance</option>
+                <option value="hardcore">Hardcore</option>
+                <option value="hardtechno">Hard Techno</option>
+                <option value="downtempo">Downtempo</option>
+                <option value="electronica">Electronica</option>
+                <option value="italo">Italo Disco</option>
+              </select>
+            </div>
+            <div class="sb-row">
+              <div class="sb-label">BPM</div>
+              <div class="sb-bpm" id="bpmBox" style="cursor:pointer"><span>♩</span><b id="bpmVal">126</b></div>
+            </div>
+            <!-- Key/Scale — advanced, collapsed by default -->
+            <div style="padding:3px 12px 2px">
+              <button id="swAdvancedToggle" style="background:none;border:none;color:rgba(255,255,255,0.28);font-size:7px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:inherit;padding:2px 0">▶ Key &amp; Scale</button>
+            </div>
+            <div id="swAdvanced" style="display:none">
+              <div class="sb-row">
+                <div class="sb-label">Key</div>
+                <select class="sb-select" id="sbKeySelect" style="max-width:70px" onchange="document.getElementById('keySelect').value=this.value;document.getElementById('keySelect').dispatchEvent(new Event('change'));updateSwStatus()">
+                  <option>A</option><option>A#</option><option>B</option><option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option>
+                </select>
+                <select class="sb-select" id="sbScaleSelect" onchange="document.getElementById('scaleSelect').value=this.value;document.getElementById('scaleSelect').dispatchEvent(new Event('change'));updateSwStatus()">
+                  <option>Major</option><option selected>Minor</option><option>Dorian</option><option>Phrygian</option><option>Pentatonic</option><option>Lydian</option><option>Chromatic</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- PLACE — single row, no default active -->
+          <div class="sb-section-label" style="margin-top:6px">Place</div>
+          <div style="display:flex;gap:4px;padding:0 12px 10px">
+            <button class="sb-place-btn" data-vt="blob"><span style="font-size:11px;display:block;margin-bottom:1px">◎</span>Blob</button>
+            <button class="sb-place-btn" data-vt="neon"><span style="font-size:11px;display:block;margin-bottom:1px">—</span>Neon</button>
+            <button class="sb-place-btn" data-vt="fold"><span style="font-size:11px;display:block;margin-bottom:1px">╱</span>Fold</button>
+            <button class="sb-place-btn" data-vt="spot"><span style="font-size:11px;display:block;margin-bottom:1px">◉</span>Spot</button>
+            <button class="sb-place-btn" data-vt="beam"><span style="font-size:11px;display:block;margin-bottom:1px">⟿</span>Beam</button>
+          </div>
+
+          <!-- ADD -->
+          <div class="sb-section-label" style="margin-top:2px">Add</div>
+          <div class="sb-actions" style="padding-top:0">
+            <button class="sb-btn" id="sbBtnAddSound"><span class="sb-btn-icon">+</span>Add Sound</button>
+            <button class="sb-btn" id="sbBtnSoundLib"><span class="sb-btn-icon">◈</span>Sound Library</button>
+            <button class="sb-btn" id="sbBtnEditDrums"><span class="sb-btn-icon">▣</span>Edit Drums</button>
+          </div>
+
+          <!-- ACTIVE SOUNDS -->
+          <div class="el-list-head" style="margin-top:4px">
+            <div class="el-list-title">Active Sounds</div>
+            <div class="el-list-count" id="elCount">0</div>
+          </div>
+          <div class="el-list" id="elListBody2"></div>
+
+        </div>
+      </div>
+
+      <!-- ══ SOUND SETTINGS PANEL (shown when element selected) ══ -->
+      <div class="sb-panel" id="panelSound">
+        <div class="sb-header">
+          <div class="sb-header-title" id="soundPanelTitle">Sound Settings</div>
+          <div class="sb-header-close" id="soundPanelClose">← Back</div>
+        </div>
+        <!-- Inspector body injected here -->
+        <div class="inspector active" id="inspector">
+          <div class="insp-body" id="inspBody" style="flex:1;overflow-y:auto">
+            <div class="meta-row" style="padding:6px 10px">
+              <div class="meta-btn" id="muteBtn">Mute</div>
+              <div class="meta-btn" id="soloBtn">Solo</div>
+            </div>
+            <div class="vtype-section">
+              <div class="sec-label">Shape</div>
+              <div class="vtype-row" id="vtGrid">
+                <div class="abtn active" data-vt="blob">Blob</div>
+                <div class="abtn" data-vt="neon">Neon</div>
+                <div class="abtn" data-vt="fold">Fold</div>
+                <div class="abtn" data-vt="spot">Spot</div>
+                <div class="abtn" data-vt="beam">Beam</div>
+              </div>
+            </div>
+            <div class="sound-section">
+              <div class="sec-label" style="display:flex;justify-content:space-between;align-items:center">
+                <span>Sound Type</span>
+                <span id="syncIndicator" style="font-size:6px;letter-spacing:.05em;opacity:0.5"></span>
+              </div>
+              <!-- Current sound type display — no inline grid -->
+              <div id="soundTypeDisplay" style="display:flex;align-items:center;gap:8px;padding:4px 0 8px">
+                <div id="soundTypeIcon" style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);flex-shrink:0">◎</div>
+                <div style="flex:1">
+                  <div id="soundTypeName" style="font-size:11px;color:rgba(255,255,255,0.8);font-weight:500">Sub</div>
+                  <div id="soundTypeSub" style="font-size:7.5px;color:rgba(255,255,255,0.3);margin-top:1px">Low end</div>
+                </div>
+                <button class="sb-btn" id="sbBtnChangeSoundType" style="padding:5px 8px;font-size:7px;flex-shrink:0"><span style="font-size:9px">⇄</span></button>
+              </div>
+              <!-- Variation -->
+              <div style="padding:4px 0 2px">
+                <div class="var-label" id="varLabel" style="display:none"></div>
+                <div id="varDots" style="display:flex;flex-wrap:wrap;gap:5px;padding:2px 0"></div>
+              </div>
+              <!-- Hidden compat elements -->
+              <div class="sound-types" id="soundTypes" style="display:none"></div>
+              <div class="role-tabs" id="roleTabs" style="display:none">
+                <div class="role-tab" data-role="rhythm">Rhythm</div>
+                <div class="role-tab" data-role="voice">Voice</div>
+                <div class="role-tab" data-role="atmosphere">Atmos</div>
+              </div>
+            </div>
+            <div class="note-section">
+              <div class="sec-label">Note</div>
+              <div class="note-row">
+                <div class="note-display" id="noteDisplay">A3</div>
+                <div class="note-hint">click to cycle</div>
+              </div>
+            </div>
+            <div class="pads-section">
+              <div class="xy-block">
+                <div class="xy-header"><div class="xy-title">Shape</div><div class="xy-axes">Sharp ← → Soft · Short ↑ ↓ Long</div></div>
+                <div class="xy-pad" id="xyShape"><svg id="xyShapeSvg" viewBox="0 0 200 130"></svg><div class="xy-dot" id="dotShape"></div><div class="xy-corner tl">Sharp/Short</div><div class="xy-corner br">Soft/Drone</div></div>
+              </div>
+              <div class="xy-block">
+                <div class="xy-header"><div class="xy-title">Tone</div><div class="xy-axes">Dark ← → Bright · Clean ↑ ↓ Resonant</div></div>
+                <div class="xy-pad" id="xyTone"><svg id="xyToneSvg" viewBox="0 0 200 130"></svg><div class="xy-dot" id="dotTone"></div><div class="xy-corner tl">Dark/Clean</div><div class="xy-corner br">Bright/Resonant</div></div>
+              </div>
+              <div class="xy-block">
+                <div class="xy-header"><div class="xy-title">Space</div><div class="xy-axes">Dry ← → Wet · Tight ↑ ↓ Wide</div></div>
+                <div class="xy-pad" id="xySpace"><svg id="xySpaceSvg" viewBox="0 0 200 130"></svg><div class="xy-dot" id="dotSpace"></div><div class="xy-corner tl">Dry/Tight</div><div class="xy-corner br">Wet/Wide</div></div>
+              </div>
+            </div>
+            <div class="role-controls-section" id="roleControlsSection" style="padding:6px 10px 4px;border-bottom:1px solid rgba(255,255,255,0.05)">
+              <div class="sec-label" id="roleControlsLabel">Controls</div>
+              <div id="roleControlsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px"></div>
+            </div>
+            <div class="output-section">
+              <div class="sec-label">Output</div>
+              <div class="fader-row">
+                <div class="fader-cell">
+                  <div class="fader-val" id="volVal">75%</div>
+                  <div class="fader-track" id="volTrack"><div class="fader-fill" id="volFill" style="height:75%;background:rgba(167,139,250,0.18)"></div><div class="fader-thumb" id="volThumb" style="bottom:71%"></div></div>
+                  <div class="fader-label">Vol</div>
+                </div>
+                <div class="fader-cell">
+                  <div class="fader-val" id="panVal">C</div>
+                  <div class="fader-track" id="panTrack"><div class="fader-fill" id="panFill" style="height:50%;background:rgba(255,255,255,0.05)"></div><div class="fader-thumb" id="panThumb" style="bottom:46%"></div></div>
+                  <div class="fader-label">Pan</div>
+                </div>
+              </div>
+            </div>
+            <!-- Delete button -->
+            <div style="padding:10px 10px 16px">
+              <div id="sbBtnDelete" style="padding:8px;border-radius:5px;border:1px solid rgba(255,80,80,0.2);background:rgba(255,80,80,0.05);color:rgba(255,100,100,0.6);font-size:8px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-align:center;transition:all .12s" onmouseover="this.style.background='rgba(255,80,80,0.1)'" onmouseout="this.style.background='rgba(255,80,80,0.05)'">Delete Sound</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ DRUM MACHINE OVERLAY ══ -->
+      <div class="sound-picker" id="drumMachinePanel">
+        <div class="sound-picker-header">
+          <div class="sound-picker-back" id="drumMachineBack">←</div>
+          <div class="sound-picker-title">Drum Machine</div>
+        </div>
+        <div style="padding:8px;flex:1;overflow-y:auto">
+          <div class="drum-grid" id="drumGrid"></div>
+        </div>
+      </div>
+
+      <!-- ══ SOUND PICKER OVERLAY ══ -->
+      <div class="sound-picker" id="soundPicker">
+        <div class="sound-picker-header">
+          <div class="sound-picker-back" id="soundPickerBack">←</div>
+          <div class="sound-picker-title">Add Sound</div>
+        </div>
+        <div class="sound-picker-scroll" id="soundPickerScroll"></div>
+      </div>
+
+      <!-- Hidden compat elements -->
+      <div id="drumSection" style="display:none"></div>
+      <div class="el-head" style="display:none">
+        <div class="el-icon" id="elIcon">◎</div>
+        <div class="el-name" id="elName">Element</div>
+        <span id="elRoleTag" style="display:none"></span>
+        <div id="elDice" style="display:none">⚄</div>
+        <div class="el-close" id="elClose" style="display:none">✕</div>
+      </div>
+      <div class="back-btn" id="backBtn" style="display:none"></div>
+
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="timeline-area" id="timelineArea">
+    <div class="tl-left">
+      <div class="tl-left-head">
+        <div class="tl-left-title">Scenes</div>
+        <div class="tl-add-btn" id="tlAddBtn">+</div>
+      </div>
+      <div class="tl-vibe-list" id="tlVibeList"></div>
+    </div>
+    <div class="tl-right">
+      <div class="tl-transport">
+        <div class="tl-tbtn" id="tlPlay"><svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9" fill="rgba(126,232,162,0.7)"/></svg></div>
+        <div class="tl-tbtn" id="tlStop"><svg viewBox="0 0 10 10"><rect x="2" y="2" width="6" height="6" rx="0.5" fill="rgba(255,255,255,0.35)"/></svg></div>
+        <div class="sep"></div>
+        <div class="tl-time" id="tlTime">0:00</div>
+        <div class="tl-total" id="tlTotal">/ 0:00</div>
+        <div class="tl-xfade" id="tlXfade"><span>Xfade</span>&nbsp;<b id="tlXfadeVal">4 bars</b></div>
+      </div>
+      <div class="tl-ruler" id="tlRuler"></div>
+      <div class="tl-track" id="tlTrack">
+        <div class="tl-track-inner" id="tlTrackInner">
+          <div class="tl-playhead" id="tlPlayhead" style="left:0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- end .app -->
+
+  <!-- MOBILE BOTTOM NAV -->
+  <div class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-btn active" id="mNavField" onclick="mobileShowPanel('fields')">
+      <span class="nav-icon">≡</span><span class="nav-label">Fields</span>
+    </button>
+    <div class="mobile-nav-divider"></div>
+    <button class="mobile-nav-btn" id="mNavSettings" onclick="mobileShowPanel('settings')">
+      <span class="nav-icon">⊙</span><span class="nav-label">Settings</span>
+    </button>
+    <div class="mobile-nav-divider"></div>
+    <button class="mobile-nav-btn" id="mNavSounds" onclick="mobileShowPanel('sounds')">
+      <span class="nav-icon">♪</span><span class="nav-label">Sounds</span>
+    </button>
+    <!-- Hidden compat nav buttons -->
+    <button id="mNavVibes" style="display:none" data-sheet="sheetVibes"></button>
+    <button id="mNavElements" style="display:none" data-sheet="sheetElements"></button>
+    <button id="mNavDrums" style="display:none" data-sheet="sheetDrums"></button>
+    <button id="mNavStyle" style="display:none" data-sheet="sheetStyle"></button>
+    <button id="mNavLive" style="display:none"></button>
+  </div>
+
+  <!-- SHEET: INSPECTOR (mobile element editor) -->
+  <div class="mobile-sheet" id="sheetInspector" style="max-height:88vh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheetInspectorTitle">Element</div>
+    <div class="sheet-body" id="sheetInspectorBody" style="padding:0">
+      <!-- inspector content gets moved here on mobile -->
+    </div>
+  </div>
+
+  <!-- SHEET: VIBES / FIELDS -->
+  <div class="mobile-sheet" id="sheetVibes">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Fields</div>
+    <div class="sheet-body">
+      <div id="vibesBuiltInM"></div>
+      <div style="height:1px;background:rgba(255,255,255,0.06);margin:4px 0"></div>
+      <div class="vibes-save-btn" id="vibesSaveBtnM" style="margin:4px 10px"><span>+ Save Current Field</span></div>
+      <div id="vibesSavedM"></div>
+    </div>
+  </div>
+
+  <!-- SHEET: SETTINGS (right sidebar content on mobile) -->
+  <div class="mobile-sheet" id="sheetSettings" style="max-height:92vh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheetSettingsTitle">Field Settings</div>
+    <div class="sheet-body" id="sheetSettingsBody" style="padding:0;overflow-y:auto">
+      <!-- Sidebar content cloned here on open -->
+    </div>
+  </div>
+
+  <!-- SHEET: SOUND PICKER -->
+  <div class="mobile-sheet" id="sheetSoundPicker" style="max-height:88vh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add Sound</div>
+    <div class="sheet-body" id="sheetSoundPickerBody" style="padding:0;overflow-y:auto">
+      <!-- Sound picker accordion injected here -->
+    </div>
+  </div>
+
+  <!-- SHEET: ELEMENTS -->
+  <div class="mobile-sheet" id="sheetElements">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Elements</div>
+    <div class="sheet-body">
+      <div id="elListBodyM" style="padding:0 0 8px"></div>
+    </div>
+  </div>
+
+  <!-- SHEET: DRUMS -->
+  <div class="mobile-sheet" id="sheetDrums">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Drums</div>
+    <div class="sheet-body" id="sheetDrumsBody" style="padding:8px 4px"></div>
+  </div>
+
+  <!-- SHEET: GENRE -->
+  <div class="mobile-sheet" id="sheetStyle">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Genre</div>
+    <div class="sheet-body">
+      <div style="padding:8px 14px 4px;font-size:8px;color:rgba(255,255,255,0.3);letter-spacing:.1em;text-transform:uppercase">Tools</div>
+      <div style="display:flex;gap:8px;padding:6px 14px 12px;flex-wrap:wrap">
+        <button class="tb rnd" id="mBtnRnd" style="flex:1;min-height:42px;font-size:11px">Randomize</button>
+        <button class="tb" id="mBtnGenerate" style="flex:1;min-height:42px;font-size:11px;color:rgba(126,232,162,0.9);border-color:rgba(126,232,162,0.3)">Generate</button>
+        <button class="tb" id="mBtnSave" style="flex:1;min-height:42px;font-size:11px">Save</button>
+      </div>
+      <div style="padding:4px 14px 4px;font-size:8px;color:rgba(255,255,255,0.3);letter-spacing:.1em;text-transform:uppercase">Key + Scale</div>
+      <div style="display:flex;gap:8px;padding:6px 14px 16px">
+        <select id="keySelectM" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.7);font-size:13px;padding:10px 8px;font-family:inherit;outline:none;min-height:44px">
+          <option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>G#</option><option selected>A</option><option>A#</option><option>B</option>
+        </select>
+        <select id="scaleSelectM" style="flex:2;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:rgba(255,255,255,0.7);font-size:13px;padding:10px 8px;font-family:inherit;outline:none;min-height:44px">
+          <option>Major</option><option selected>Minor</option><option>Dorian</option><option>Phrygian</option><option>Pentatonic</option><option>Lydian</option><option>Chromatic</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+<div class="modal-overlay" id="saveModal">
+  <div class="modal">
+    <h3>Save Field</h3>
+    <input type="text" id="saveNameInput" placeholder="Name this field..." autocomplete="off">
+    <div class="modal-actions">
+      <div class="modal-btn" id="saveCancelBtn">Cancel</div>
+      <div class="modal-btn primary" id="saveConfirmBtn">Save</div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// Global error catcher - helps diagnose the actual error on iOS
+window.onerror = function(msg, src, line, col, err) {
+  const isScriptError = msg==='Script error.'||msg==='Script error'||(!line&&!col);
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:'+(document.querySelectorAll('[data-fg-err]').length*44)+'px;left:0;right:0;background:'+(isScriptError?'#940':'#f00')+';color:#fff;padding:10px;font-size:12px;z-index:99999;word-break:break-all;font-family:monospace;';
+  div.setAttribute('data-fg-err','1');
+  div.textContent = isScriptError
+    ? ('OPAQUE ERROR (cross-origin?) — open desktop Safari + Web Inspector for details. src='+(src||'?')+' line='+(line||'?'))
+    : ('ERROR: ' + msg + ' | line:' + line + ' col:' + col + ' | ' + (err && err.stack ? err.stack.substring(0,200) : 'no stack'));
+  document.body.appendChild(div);
+  // Tap to dismiss so it doesn't cover the UI permanently
+  div.addEventListener('click', ()=>div.remove(), {once:true});
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;top:'+(document.querySelectorAll('[data-fg-err]').length*44)+'px;left:0;right:0;background:#f80;color:#fff;padding:10px;font-size:12px;z-index:99999;word-break:break-all;font-family:monospace;';
+  div.setAttribute('data-fg-err','1');
+  div.textContent = 'PROMISE: ' + (e.reason && e.reason.message ? e.reason.message : String(e.reason));
+  document.body.appendChild(div);
+  div.addEventListener('click', ()=>div.remove(), {once:true});
+});
+</script>
+
+<script src="fg-data.js"></script>
+<script src="fg-entitlements.js"></script>
+<script src="fg-state.js"></script>
+<script src="fg-audio.js"></script>
+<script src="fg-recorder.js"></script>
+<script src="fg-instruments.js"></script>
+<script src="fg-visual.js"></script>
+<script src="fg-conductor.js"></script>
+<script src="fg-live.js"></script>
+<script src="fg-auth.js"></script>
+<script src="fg-ui.js"></script>
+</body></html>

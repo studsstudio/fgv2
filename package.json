@@ -1,0 +1,35 @@
+{
+  "name": "field-gradients-v2",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "npx tsx server/index.ts",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "connect-pg-simple": "^10.0.0",
+    "drizzle-orm": "^0.39.3",
+    "drizzle-zod": "^0.7.0",
+    "express": "^5.0.1",
+    "express-session": "^1.19.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "pg": "^8.16.3",
+    "stripe": "^20.4.0",
+    "zod": "^3.24.2",
+    "zod-validation-error": "^3.4.0",
+    "tsx": "^4.20.5"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.2",
+    "@types/node": "20.19.27",
+    "@types/passport": "^1.0.17",
+    "@types/passport-local": "^1.0.38",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "5.6.3"
+  }
+}
